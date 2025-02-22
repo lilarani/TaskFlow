@@ -43,6 +43,44 @@ async function run() {
     const taskCollection = database.collection('tasks');
     const usersCollection = database.collection('users');
 
+    const changeStream = taskCollection.watch();
+
+    // Stream for real-time updates
+    // changeStream.on('change', change => {
+    //   if (change) {
+    //     console.log(change.fullDocument);
+    //     io.emit('task', {
+    //       type: change.operationType,
+    //       data: change.fullDocument,
+    //     });
+    //   }
+    // });
+
+    changeStream.on('change', change => {
+      if (!change || !change.operationType) return;
+
+      console.log('Change detected:', change);
+
+      if (change.operationType === 'insert') {
+        io.emit('task-added', {
+          message: 'A new task was added!',
+          data: change.fullDocument,
+        });
+      } else if (change.operationType === 'update') {
+        io.emit('task-updated', {
+          message: 'A task was updated!',
+          data: change.fullDocument,
+        });
+      } else if (change.operationType === 'delete') {
+        io.emit('task-deleted', {
+          message: 'A task was deleted!',
+          data: { _id: change.documentKey._id },
+        });
+      } else {
+        console.log('Unknown operation:', change.operationType);
+      }
+    });
+
     // 🔹 **Socket.io: Handle Real-Time Connections**
     io.on('connection', socket => {
       console.log(' A user connected');
@@ -141,7 +179,7 @@ async function run() {
     // 🔹 **PUT: Update Task Position (Category, Index) for Drag & Drop with Unique Index**
     app.put('/task/reorder/:id', async (req, res) => {
       const id = req.params.id;
-      const { category, index } = req.body; // Get new category and index from request body
+      const { category, index } = req.body;
 
       // Validate ObjectId
       if (!isValidObjectId(id)) {
