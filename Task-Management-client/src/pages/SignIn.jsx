@@ -17,10 +17,7 @@ const SignIn = () => {
           email: res.user.email,
         };
         axios
-          .post(
-            'https://task-management-server-beta-seven.vercel.app/usersInfo',
-            info
-          )
+          .post('https://taskflow-server-f50d.onrender.com/usersInfo', info)
           .then(response => {
             navigate('/');
           })

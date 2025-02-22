@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { FiEdit, FiTrash2, FiCheck } from 'react-icons/fi';
+import { AuthContext } from '../Providers/AuthProvider';
+import Swal from 'sweetalert2';
 
 const categories = ['To-Do', 'In Progress', 'Done'];
 const TaskBoard = () => {
@@ -11,12 +13,63 @@ const TaskBoard = () => {
     category: 'To-Do',
   });
   const [editingTask, setEditingTask] = useState(null);
+  const { socket } = useContext(AuthContext);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('task-added', task => {
+        console.log(task);
+        fetchTasks();
+        Swal.fire({
+          position: 'top-end',
+          icon: 'success',
+          title: `${task.message}`,
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      });
+
+      // update
+      socket.on('task-updated', task => {
+        console.log(task);
+        fetchTasks();
+        Swal.fire({
+          position: 'top-end',
+          icon: 'success',
+          title: `${task.message}`,
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      });
+
+      // delete
+      socket.on('task-deleted', task => {
+        console.log(task);
+        fetchTasks();
+        Swal.fire({
+          position: 'top-center',
+          icon: 'success',
+          title: `${task.message}`,
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      });
+
+      return () => {
+        if (socket) {
+          socket.off('task-added');
+          socket.off('task-updated');
+          socket.off('task-deleted');
+        }
+      };
+    }
+  }, [socket]);
 
   // Fetch tasks from server
   const fetchTasks = useCallback(async () => {
     try {
       const response = await fetch(
-        `https://task-management-server-beta-seven.vercel.app/task`
+        `https://taskflow-server-f50d.onrender.com/task`
       );
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -78,7 +131,7 @@ const TaskBoard = () => {
     // Update the backend
     try {
       await fetch(
-        `https://task-management-server-beta-seven.vercel.app/task/reorder/${draggableId}`,
+        `https://taskflow-server-f50d.onrender.com/task/reorder/${draggableId}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -106,7 +159,7 @@ const TaskBoard = () => {
 
     try {
       const response = await fetch(
-        `https://task-management-server-beta-seven.vercel.app/task`,
+        `https://taskflow-server-f50d.onrender.com/task`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -126,12 +179,9 @@ const TaskBoard = () => {
   // Delete Task
   const handleDeleteTask = async taskId => {
     try {
-      await fetch(
-        `https://task-management-server-beta-seven.vercel.app/task/${taskId}`,
-        {
-          method: 'DELETE',
-        }
-      );
+      await fetch(`https://taskflow-server-f50d.onrender.com/task/${taskId}`, {
+        method: 'DELETE',
+      });
       setTasks(tasks.filter(task => task._id !== taskId));
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -149,14 +199,11 @@ const TaskBoard = () => {
     const { _id, ...taskToUpdate } = updatedTask;
 
     try {
-      await fetch(
-        `https://task-management-server-beta-seven.vercel.app/task/${taskId}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(taskToUpdate),
-        }
-      );
+      await fetch(`https://taskflow-server-f50d.onrender.com/task/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(taskToUpdate),
+      });
 
       setEditingTask(null);
       fetchTasks();
